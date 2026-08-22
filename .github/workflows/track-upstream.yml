@@ -1,0 +1,56 @@
+name: track-upstream
+
+# Opens a pull request when a distribution publishes a newer file within the
+# series it is pinned to.
+#
+# A pull request rather than a push, and within the series rather than across
+# it. A point release changes nothing the app knows about — same branch, same
+# package manager — but it is still a change to what runs on people's devices,
+# and the diff is two lines someone can read in a second. Moving between series
+# is reported and not automated: Alpine is held at 3.22 because 3.23 ships
+# apk-tools 3, whose fetches fail under proot on Android, and nothing here can
+# be trusted to know that.
+#
+# Publishing stays manual. This only proposes the pin.
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for newer upstream files
+        run: python3 scripts/track.py --write | tee "$RUNNER_TEMP/report.txt"
+
+      - name: Open a pull request if anything moved
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- sources.json; then
+            echo "nothing moved"
+            exit 0
+          fi
+
+          branch="track/upstream-${{ github.run_number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add sources.json
+          git commit -m "chore: follow upstream" -m "$(cat "$RUNNER_TEMP/report.txt")"
+          git push -u origin "$branch"
+
+          # The digest is the thing to check before merging: it comes from
+          # whatever file upstream publishes beside the tarball, and the build
+          # refuses anything that does not match it.
+          gh pr create \
+            --title "chore: follow upstream" \
+            --body "$(printf 'Found by `scripts/track.py`.\n\n```\n%s\n```\n\nMerging this only moves the pin. Publishing is still `publish.yml`, run by hand.\n' "$(cat "$RUNNER_TEMP/report.txt")")"

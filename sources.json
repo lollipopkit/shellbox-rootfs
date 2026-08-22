@@ -1,0 +1,80 @@
+{
+  "_comment": [
+    "What each distribution publishes, and what to do with it.",
+    "",
+    "This is the input. scripts/build.py reads it, fetches each upstream file,",
+    "checks it against the digest here, normalises it, and writes manifest.json",
+    "describing both the result and where it came from.",
+    "",
+    "A digest here is the whole of the trust chain's first link: everything the",
+    "release publishes is derived from a file that matched one of these, so a",
+    "compromised mirror produces a failed build rather than a signed artifact.",
+    "Moving a pin means changing url and sha256 together and saying in the",
+    "commit message which upstream release it is."
+  ],
+  "distros": {
+    "alpine": {
+      "label": "Alpine",
+      "version": "3.22.5",
+      "branch": "v3.22",
+      "package_manager": "apk",
+      "default_mirror": "https://dl-cdn.alpinelinux.org/alpine",
+      "upstream": {
+        "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/aarch64/alpine-minirootfs-3.22.5-aarch64.tar.gz",
+        "sha256": "3fbc6285032ed46821b511292633d7b2a6306a2e254f590e92bdafff56cf2f70",
+        "layout": "plain",
+        "compression": "gzip",
+        "follows_mirror": true
+      },
+      "repack": {
+        "compression": "gzip"
+      },
+      "track": {
+        "kind": "alpine",
+        "note": "3.22 rather than the newest: 3.23 ships apk-tools 3, whose network fetches fail under proot on Android. See ServerBox's AndroidRootfs."
+      }
+    },
+    "ubuntu": {
+      "label": "Ubuntu",
+      "version": "26.04",
+      "branch": "resolute",
+      "package_manager": "apt",
+      "default_mirror": "https://archive.ubuntu.com/ubuntu",
+      "upstream": {
+        "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release/ubuntu-base-26.04-base-arm64.tar.gz",
+        "sha256": "b2b46a37324ea1954e93f293fe6d7c2241daf2fc298c4022e6e4caceeed74cab",
+        "layout": "plain",
+        "compression": "gzip",
+        "follows_mirror": false
+      },
+      "repack": {
+        "compression": "gzip"
+      },
+      "track": {
+        "kind": "ubuntu-cdimage",
+        "note": "The tarball is on cdimage and the packages are on archive, so one mirror string cannot name both. follows_mirror is false for that reason."
+      }
+    },
+    "rocky": {
+      "label": "Rocky Linux",
+      "version": "9.8",
+      "branch": "9",
+      "package_manager": "dnf",
+      "default_mirror": "https://dl.rockylinux.org/pub/rocky",
+      "upstream": {
+        "url": "https://dl.rockylinux.org/pub/rocky/9/images/aarch64/Rocky-9-Container-Base-9.8-20260525.0.aarch64.oci.tar.xz",
+        "sha256": "254dc06377bb63a5ab390cea33c2f26d71c4e0ff6ae1bc8a0fb0fbb86d992e89",
+        "layout": "oci",
+        "compression": "xz",
+        "follows_mirror": true
+      },
+      "repack": {
+        "compression": "xz"
+      },
+      "track": {
+        "kind": "rocky-images",
+        "note": "The dated build, not the .latest. file the same directory offers: that one's bytes change on every rebuild, so a pinned digest would go stale under it."
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+name: publish
+
+# Builds every distribution, signs the manifest, and publishes a release.
+#
+# Run by hand. Building is cheap but a release is a thing users' devices will
+# fetch, so it happens when someone means it rather than on every push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v2026.08.22"
+        required: true
+      serial:
+        description: >-
+          Manifest serial. Must only ever increase: ServerBox refuses a
+          manifest whose serial is below the highest it has accepted, which is
+          what stops an old signed copy being replayed. Defaults to the run
+          number.
+        required: false
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Linux runners have GNU tar and a case-sensitive filesystem. Both
+      # matter: the reproducible flags are GNU-only, and a case-insensitive
+      # host silently collides files like xt_connmark.h with xt_CONNMARK.h.
+      - name: Check the environment is one that can build this
+        run: |
+          tar --version | head -1 | grep -q 'GNU tar' || { echo "not GNU tar"; exit 1; }
+          d=$(mktemp -d); touch "$d/AAA"
+          if [ -e "$d/aaa" ]; then echo "case-insensitive filesystem"; exit 1; fi
+
+      - name: Build
+        run: |
+          python3 scripts/build.py \
+            --out dist \
+            --tag "${{ inputs.tag }}" \
+            --serial "${{ inputs.serial || github.run_number }}"
+
+      # The manifest is what decides which bytes a device downloads and runs,
+      # so it is signed and the app holds the public half. The private key
+      # never leaves this step.
+      - name: Sign the manifest
+        env:
+          SIGNING_KEY: ${{ secrets.MANIFEST_SIGNING_KEY }}
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "MANIFEST_SIGNING_KEY is not set; nothing would be able to verify this release" >&2
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/priv.pem"
+          openssl pkeyutl -sign -inkey "$RUNNER_TEMP/priv.pem" -rawin \
+            -in dist/manifest.json -out dist/manifest.json.sig
+          rm -f "$RUNNER_TEMP/priv.pem"
+
+      # Against the key the app actually carries. A secret holding the wrong
+      # key would otherwise produce a release that every device rejects, and
+      # the first report of it would come from a user.
+      - name: Verify what was just signed
+        run: |
+          printf '302a300506032b6570032100' | xxd -r -p > "$RUNNER_TEMP/pub.der"
+          printf '%s' 'wsNkktBO13RsNJm9P38/QPXExoFYluty9zKlZpWSYkk=' \
+            | base64 -d >> "$RUNNER_TEMP/pub.der"
+          openssl pkey -pubin -inform DER -in "$RUNNER_TEMP/pub.der" \
+            -out "$RUNNER_TEMP/pub.pem"
+          openssl pkeyutl -verify -pubin -inkey "$RUNNER_TEMP/pub.pem" -rawin \
+            -in dist/manifest.json -sigfile dist/manifest.json.sig
+
+      - name: Attest the artifacts
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: "dist/*"
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag }}" dist/* \
+            --title "${{ inputs.tag }}" \
+            --notes-file <(python3 scripts/notes.py dist/manifest.json)
