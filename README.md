@@ -57,6 +57,12 @@ upstream file, run the same script, compare.
 Builds are reproducible — sorted entries, zeroed mtimes and owners, `gzip -n`
 because a gzip container carries a timestamp that `--mtime` does not reach.
 
+`build.py` refuses to run on a case-insensitive filesystem. A rootfs contains
+names differing only in case — `xt_CONNMARK.h` beside `xt_connmark.h`, among
+dozens — and unpacking one on macOS's default APFS loses the second silently,
+producing a smaller archive of a tree with files missing from it. Nothing
+fails; the digest is simply of something else.
+
 ### Rotating the key
 
 The private half is not here and never was. Generate one, keep it in the

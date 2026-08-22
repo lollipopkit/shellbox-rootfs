@@ -68,6 +68,36 @@ def gnu_tar() -> str:
         "GNU tar is required for a reproducible archive; on macOS: brew install gnu-tar"
     )
 
+
+def require_case_sensitive(where: Path) -> None:
+    """Refuse a filesystem that folds case, because losing files is silent.
+
+    A rootfs contains names that differ only in case — the kernel headers ship
+    `xt_connmark.h` beside `xt_CONNMARK.h`, and there are dozens more. Unpacked
+    onto a case-insensitive filesystem the second overwrites the first, and the
+    repack then produces a smaller archive that installs a system with files
+    missing from it. Nothing fails; the digest is simply of a different tree.
+
+    macOS is case-insensitive by default, so this fires on the machine most
+    likely to be running the script by hand. It was checked in `publish.yml`
+    and not here, which meant a local run produced artifacts CI would have
+    refused and said nothing about it — the way it was found was two builds of
+    the same input disagreeing by three kilobytes.
+    """
+    probe = where / "CaseProbe"
+    probe.mkdir()
+    try:
+        if (where / "caseprobe").exists():
+            raise SystemExit(
+                f"{where} is on a case-insensitive filesystem, where names "
+                f"like xt_CONNMARK.h and xt_connmark.h collide and one is "
+                f"silently lost. Build on Linux, or on a case-sensitive APFS "
+                f"volume (Disk Utility: APFS (Case-sensitive))."
+            )
+    finally:
+        probe.rmdir()
+
+
 # How long a fetched manifest stays acceptable. Long enough that a quiet
 # period upstream does not strand anyone, short enough that a copy replayed
 # after this repository stops publishing eventually stops being believed.
@@ -273,6 +303,9 @@ def build_one(name: str, release: dict, out: Path, tag: str) -> dict:
 
     with tempfile.TemporaryDirectory(prefix=f"sbrootfs-{name}-") as td:
         work = Path(td)
+        # Checked on the directory the tree is unpacked into, not on the
+        # repository: TMPDIR can be on a different volume from the checkout.
+        require_case_sensitive(work)
         archive = work / "upstream"
         fetch(up["url"], archive, up["sha256"])
 
