@@ -31,34 +31,42 @@ def main() -> None:
     out.append("")
 
     for name, d in sorted(manifest["distros"].items()):
-        r, u = d["rootfs"], d["upstream"]
-        saved = u["size_bytes"] - r["size_bytes"]
-        out.append(f"### {d['label']} {d['version']}")
-        out.append("")
-        out.append(f"| | file | sha256 | size |")
-        out.append(f"| --- | --- | --- | --- |")
-        out.append(
-            f"| repacked | `{r['url'].rsplit('/', 1)[-1]}` "
-            f"| `{r['sha256']}` | {mb(r['size_bytes'])} |"
-        )
-        out.append(
-            f"| upstream | [{u['url'].rsplit('/', 1)[-1]}]({u['url']}) "
-            f"| `{u['sha256']}` | {mb(u['size_bytes'])} |"
-        )
-        out.append("")
-        if u["layout"] != r["layout"]:
+        # A heading per release rather than per distribution: each is its own
+        # download with its own two digests, and the provenance claim is about
+        # a file, not about a name.
+        for i, rel in enumerate(d["releases"]):
+            r, u = rel["rootfs"], rel["upstream"]
+            saved = u["size_bytes"] - r["size_bytes"]
+            # Said once, on the one row a plain install lands on.
+            default = " (default)" if i == 0 else ""
+            out.append(f"### {d['label']} {rel['version']}{default}")
+            out.append("")
+            out.append(f"Series `{rel['branch']}`.")
+            out.append("")
+            out.append(f"| | file | sha256 | size |")
+            out.append(f"| --- | --- | --- | --- |")
             out.append(
-                f"Flattened from `{u['layout']}` to `{r['layout']}`."
+                f"| repacked | `{r['url'].rsplit('/', 1)[-1]}` "
+                f"| `{r['sha256']}` | {mb(r['size_bytes'])} |"
             )
-        # Only when it is worth a sentence. Alpine's differs by a few kilobytes
-        # either way depending on gzip's mood, and reporting that as a result
-        # invites reading noise as a trend.
-        if abs(saved) > 1 << 20:
             out.append(
-                f"Repacking {'saves' if saved > 0 else 'costs'} "
-                f"{mb(abs(saved))}{'' if saved > 0 else ' more'}."
+                f"| upstream | [{u['url'].rsplit('/', 1)[-1]}]({u['url']}) "
+                f"| `{u['sha256']}` | {mb(u['size_bytes'])} |"
             )
-        out.append("")
+            out.append("")
+            if u["layout"] != r["layout"]:
+                out.append(
+                    f"Flattened from `{u['layout']}` to `{r['layout']}`."
+                )
+            # Only when it is worth a sentence. Alpine's differs by a few
+            # kilobytes either way depending on gzip's mood, and reporting that
+            # as a result invites reading noise as a trend.
+            if abs(saved) > 1 << 20:
+                out.append(
+                    f"Repacking {'saves' if saved > 0 else 'costs'} "
+                    f"{mb(abs(saved))}{'' if saved > 0 else ' more'}."
+                )
+            out.append("")
 
     print("\n".join(out))
 

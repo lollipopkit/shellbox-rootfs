@@ -47,7 +47,7 @@ Three parties, each deciding exactly one thing:
 That is the invariant the app's compiled-in digests used to provide, kept rather
 than traded away for convenience.
 
-`sources.json` holds an upstream digest for every distribution, and
+`sources.json` holds an upstream digest for every release, and
 `scripts/build.py` refuses anything that does not match it. So everything
 published here derives from a file that matched a digest a human committed, and
 a compromised mirror produces a failed build rather than a signed artifact.
@@ -68,6 +68,25 @@ server could replace would protect nothing.
 releasing, so a secret holding the wrong key fails the run instead of shipping
 something every device rejects.
 
+## Several releases of one distribution
+
+A distribution in `sources.json` carries a list of releases, and the manifest
+carries the same list. The first is what a plain install gets; the rest the app
+offers beside it.
+
+`branch` is what the package manager reads as its release — apt's suite, apk's
+branch, dnf's major version — and it is also what decides whether one release
+is an update of another. Two builds of `noble` replace each other; `resolute`
+is a different system, and replacing one with the other would destroy
+everything installed in the tree while calling itself a version bump. So no two
+releases of one distribution may share a branch, and both `build.py` and the
+app refuse a manifest where two do.
+
+Adding a series is deliberate work, never a tracker's doing. It means checking
+that the app's repositories file is right for it — the paths the app builds
+have to resolve on that distribution's mirror — and that its package manager
+works under proot on Android and under the ish engine on iOS.
+
 ## Layout
 
     sources.json          what each distribution publishes, and its digest
@@ -87,7 +106,8 @@ a device to a rootfs whose problems are known.
 ## Following upstream
 
 `track-upstream.yml` runs weekly and opens a pull request when a newer file
-appears **within the series** a distribution is pinned to. Moving between series
+appears **within the series** a release is pinned to. Each release is one pin
+and moves on its own. Moving between series
 is reported and never automated: Alpine is held at 3.22 because 3.23 ships
 apk-tools 3, whose network fetches fail under proot on Android, and no tracker
 can be trusted to know that.

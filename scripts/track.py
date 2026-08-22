@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Looks for a newer upstream file, within the series each distribution is pinned to.
+"""Looks for a newer upstream file, within each series that is pinned.
 
 Within the series on purpose. A point release is a change this repository can
 take unattended: same branch, same package manager, same everything the app
@@ -7,6 +7,11 @@ knows. Moving between series is not — Alpine is deliberately held at 3.22
 because 3.23 ships apk-tools 3, whose fetches fail under proot on Android, and
 no amount of automation can be trusted to know that. So this reports a newer
 series and changes nothing.
+
+A distribution holds several releases and each is one pin, moving on its own.
+Adding one is never this script's doing: a new series needs its repository
+file checked against the app's, and its package manager tried under proot and
+under the ish engine.
 
     scripts/track.py            # report
     scripts/track.py --write    # update sources.json in place
@@ -71,8 +76,8 @@ def digest_from_sums(url: str, filename: str) -> str | None:
     return None
 
 
-def check_alpine(spec: dict) -> tuple[str, str, str] | None:
-    branch = spec["branch"]  # v3.22
+def check_alpine(release: dict) -> tuple[str, str, str] | None:
+    branch = release["branch"]  # v3.22
     base = f"https://dl-cdn.alpinelinux.org/alpine/{branch}/releases/aarch64/"
     series = branch.lstrip("v")
     found = candidates(
@@ -85,8 +90,11 @@ def check_alpine(spec: dict) -> tuple[str, str, str] | None:
     return version, base + name, digest_from_sums(base + name + ".sha256", name)
 
 
-def check_ubuntu(spec: dict) -> tuple[str, str, str] | None:
-    series = spec["version"]  # 26.04
+def check_ubuntu(release: dict) -> tuple[str, str, str] | None:
+    # The directory is the series (24.04), which the pinned version may carry a
+    # point release on top of (24.04.4). Taking it off the version rather than
+    # naming it separately keeps one place for it to be wrong.
+    series = ".".join(release["version"].split(".")[:2])
     base = f"https://cdimage.ubuntu.com/ubuntu-base/releases/{series}/release/"
     found = candidates(
         base,
@@ -98,8 +106,8 @@ def check_ubuntu(spec: dict) -> tuple[str, str, str] | None:
     return version, base + name, digest_from_sums(base + "SHA256SUMS", name)
 
 
-def check_rocky(spec: dict) -> tuple[str, str, str] | None:
-    major = spec["branch"]  # 9
+def check_rocky(release: dict) -> tuple[str, str, str] | None:
+    major = release["branch"]  # 9
     base = f"https://dl.rockylinux.org/pub/rocky/{major}/images/aarch64/"
     found = candidates(
         base,
@@ -131,38 +139,43 @@ def main() -> None:
     changed = False
 
     for name, spec in doc["distros"].items():
-        kind = spec["track"]["kind"]
         check = CHECKS.get(name)
         if check is None:
-            log(f"{name}: no tracker for {kind}, skipped")
+            log(f"{name}: no tracker, skipped")
             continue
-        try:
-            latest = check(spec)
-        except Exception as e:
-            log(f"{name}: could not check ({e})")
-            continue
-        if latest is None:
-            log(f"{name}: found nothing at upstream — has the listing changed?")
-            continue
+        # Every release, each within its own series. A distribution holding
+        # two of them has two pins that move independently, and checking only
+        # the first would leave the others frozen at whatever shipped.
+        for release in spec["releases"]:
+            where = f"{name} {release['branch']}"
+            try:
+                latest = check(release)
+            except Exception as e:
+                log(f"{where}: could not check ({e})")
+                continue
+            if latest is None:
+                log(f"{where}: found nothing at upstream — has the listing changed?")
+                continue
 
-        version, url, digest = latest
-        if url == spec["upstream"]["url"]:
-            log(f"{name}: current")
-            continue
-        if digest is None:
-            log(f"{name}: {url} is newer, but upstream publishes no digest "
-                f"beside it — update by hand")
-            continue
+            version, url, digest = latest
+            if url == release["upstream"]["url"]:
+                log(f"{where}: current")
+                continue
+            if digest is None:
+                log(f"{where}: {url} is newer, but upstream publishes no digest "
+                    f"beside it — update by hand")
+                continue
 
-        log(f"{name}: newer file\n    {url}\n    {digest}")
-        changed = True
-        if args.write:
-            spec["upstream"]["url"] = url
-            spec["upstream"]["sha256"] = digest
-            # Alpine and Ubuntu name the release in the file; Rocky's version
-            # is the release and the build date is only in the name.
-            if name != "rocky":
-                spec["version"] = version
+            log(f"{where}: newer file\n    {url}\n    {digest}")
+            changed = True
+            if args.write:
+                release["upstream"]["url"] = url
+                release["upstream"]["sha256"] = digest
+                # Alpine and Ubuntu name the release in the file; Rocky's
+                # version is the release and the build date is only in the
+                # name.
+                if name != "rocky":
+                    release["version"] = version
 
     if changed and args.write:
         path.write_text(json.dumps(doc, indent=2) + "\n")

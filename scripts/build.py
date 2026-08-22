@@ -258,10 +258,17 @@ def repack(tree: Path, dest: Path, compression: str) -> None:
     )
 
 
-def build_one(name: str, spec: dict, out: Path, tag: str) -> dict:
-    log(f"{name}:")
-    up = spec["upstream"]
-    compression = spec["repack"]["compression"]
+def build_one(name: str, release: dict, out: Path, tag: str) -> dict:
+    """One release of one distribution: fetch, normalise, repack, describe.
+
+    Named `<distro>-<version>` throughout rather than `<distro>`, because two
+    releases of one distribution are two artifacts in one release directory
+    and a name that carried only the distribution would have the second
+    overwrite the first.
+    """
+    log(f"{name} {release['version']}:")
+    up = release["upstream"]
+    compression = release["repack"]["compression"]
     suffix = {"gzip": "tar.gz", "xz": "tar.xz"}[compression]
 
     with tempfile.TemporaryDirectory(prefix=f"sbrootfs-{name}-") as td:
@@ -281,7 +288,7 @@ def build_one(name: str, spec: dict, out: Path, tag: str) -> dict:
         readable = make_files_readable(tree)
         log(f"  {readable} file mode(s) given owner-read")
 
-        artifact = out / f"{name}-{spec['version']}-arm64.{suffix}"
+        artifact = out / f"{name}-{release['version']}-arm64.{suffix}"
         repack(tree, artifact, compression)
 
     digest = sha256_of(artifact)
@@ -290,11 +297,8 @@ def build_one(name: str, spec: dict, out: Path, tag: str) -> dict:
 
     base = f"https://github.com/lollipopkit/shellbox-rootfs/releases/download/{tag}"
     return {
-        "label": spec["label"],
-        "version": spec["version"],
-        "branch": spec["branch"],
-        "package_manager": spec["package_manager"],
-        "default_mirror": spec["default_mirror"],
+        "version": release["version"],
+        "branch": release["branch"],
         "rootfs": {
             "url": f"{base}/{artifact.name}",
             "sha256": digest,
@@ -350,10 +354,32 @@ def main() -> None:
         else datetime.now(timezone.utc)
     ).replace(microsecond=0)
 
-    distros = {name: build_one(name, sources[name], out, args.tag) for name in wanted}
+    distros = {}
+    for name in wanted:
+        spec = sources[name]
+        # Refused rather than resolved: two releases of one series would be one
+        # picker row hiding another, and the app's "is this an update" answer
+        # would come out as whichever this loop happened to write last.
+        branches = [r["branch"] for r in spec["releases"]]
+        duplicate = {b for b in branches if branches.count(b) > 1}
+        if duplicate:
+            raise SystemExit(f"{name}: two releases share a branch: {duplicate}")
+        distros[name] = {
+            "label": spec["label"],
+            "package_manager": spec["package_manager"],
+            "default_mirror": spec["default_mirror"],
+            # In the order sources.json gives them. The first is what a plain
+            # install gets, so this is a decision and not a serialisation
+            # detail — sorting it here would move that decision into a
+            # comparison of version strings no two distributions spell alike.
+            "releases": [
+                build_one(name, release, out, args.tag)
+                for release in spec["releases"]
+            ],
+        }
 
     manifest = {
-        "schema": 1,
+        "schema": 2,
         "serial": args.serial,
         "generated_at": now.isoformat().replace("+00:00", "Z"),
         "valid_until": (now + VALID_FOR).isoformat().replace("+00:00", "Z"),
@@ -361,6 +387,7 @@ def main() -> None:
     }
     # Sorted and newline-terminated: the bytes are what gets signed, so two
     # runs over the same input have to produce the same file.
+    # Sorted keys, but `releases` is a list and keeps the order above.
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     )
