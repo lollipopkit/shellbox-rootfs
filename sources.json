@@ -75,11 +75,11 @@
       "default_mirror": "https://archive.ubuntu.com/ubuntu",
       "releases": [
         {
-          "version": "26.04",
+          "version": "26.04.1",
           "branch": "resolute",
           "upstream": {
-            "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release/ubuntu-base-26.04-base-arm64.tar.gz",
-            "sha256": "b2b46a37324ea1954e93f293fe6d7c2241daf2fc298c4022e6e4caceeed74cab",
+            "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release/ubuntu-base-26.04.1-base-arm64.tar.gz",
+            "sha256": "5a1906794ced63a71a8119c3f211ef5f0bbe0a243001b4bbd41fdf80c5b219fd",
             "layout": "plain",
             "compression": "gzip",
             "follows_mirror": false
@@ -150,7 +150,7 @@
           },
           "track": {
             "kind": "rocky-images",
-            "note": "Same tree layout as 9 — BaseOS, AppStream and CRB under /10/<repo>/aarch64/os/ — so the app's repo file needs only the branch substituted."
+            "note": "Same tree layout as 9 \u2014 BaseOS, AppStream and CRB under /10/<repo>/aarch64/os/ \u2014 so the app's repo file needs only the branch substituted."
           }
         }
       ]
