@@ -32,11 +32,11 @@
       "default_mirror": "https://dl-cdn.alpinelinux.org/alpine",
       "releases": [
         {
-          "version": "3.22.5",
+          "version": "3.22.6",
           "branch": "v3.22",
           "upstream": {
-            "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/aarch64/alpine-minirootfs-3.22.5-aarch64.tar.gz",
-            "sha256": "3fbc6285032ed46821b511292633d7b2a6306a2e254f590e92bdafff56cf2f70",
+            "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/aarch64/alpine-minirootfs-3.22.6-aarch64.tar.gz",
+            "sha256": "821565fa8f3953eefd12497b166b4b50add2f7c57fb312e75862f5867e06fefe",
             "layout": "plain",
             "compression": "gzip",
             "follows_mirror": true
@@ -50,11 +50,11 @@
           }
         },
         {
-          "version": "3.21.7",
+          "version": "3.21.8",
           "branch": "v3.21",
           "upstream": {
-            "url": "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.7-aarch64.tar.gz",
-            "sha256": "d1d1a3fae5f4d6146e9742790a47fcb116199622cfb8439f218a4d5fbe5000da",
+            "url": "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.8-aarch64.tar.gz",
+            "sha256": "f25a96d2846a4bc439093107c1b48a8b0c93dcb411e2cb9cfded6f790b2bc001",
             "layout": "plain",
             "compression": "gzip",
             "follows_mirror": true
@@ -75,11 +75,11 @@
       "default_mirror": "https://archive.ubuntu.com/ubuntu",
       "releases": [
         {
-          "version": "26.04",
+          "version": "26.04.1",
           "branch": "resolute",
           "upstream": {
-            "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release/ubuntu-base-26.04-base-arm64.tar.gz",
-            "sha256": "b2b46a37324ea1954e93f293fe6d7c2241daf2fc298c4022e6e4caceeed74cab",
+            "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release/ubuntu-base-26.04.1-base-arm64.tar.gz",
+            "sha256": "5a1906794ced63a71a8119c3f211ef5f0bbe0a243001b4bbd41fdf80c5b219fd",
             "layout": "plain",
             "compression": "gzip",
             "follows_mirror": false
@@ -93,11 +93,11 @@
           }
         },
         {
-          "version": "24.04.4",
+          "version": "24.04.5",
           "branch": "noble",
           "upstream": {
-            "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-arm64.tar.gz",
-            "sha256": "04207713ece899c3740823d33690441ad3a7f0ded1101aca744e2b0f37ac7ff2",
+            "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.5-base-arm64.tar.gz",
+            "sha256": "a91d5a93010193712d346d761372b7c9db6dfcf093893161c64ca107f05914f2",
             "layout": "plain",
             "compression": "gzip",
             "follows_mirror": false
@@ -150,7 +150,7 @@
           },
           "track": {
             "kind": "rocky-images",
-            "note": "Same tree layout as 9 — BaseOS, AppStream and CRB under /10/<repo>/aarch64/os/ — so the app's repo file needs only the branch substituted."
+            "note": "Same tree layout as 9 \u2014 BaseOS, AppStream and CRB under /10/<repo>/aarch64/os/ \u2014 so the app's repo file needs only the branch substituted."
           }
         }
       ]
