@@ -146,8 +146,11 @@ def extract_plain(archive: Path, into: Path) -> None:
     # Device nodes need root and are expected to fail; anything else is worth
     # seeing. Silencing the lot is how a tree broken by, say, a case-insensitive
     # host filesystem would look exactly like a good one.
+    #
+    # `-p`: as a user other than root, tar otherwise applies the umask and
+    # drops the sticky and set-id bits, and `/tmp` was repacked at 0755.
     res = subprocess.run(
-        [gnu_tar(), "xf", str(archive), "-C", str(into)],
+        [gnu_tar(), "xpf", str(archive), "-C", str(into)],
         check=False,
         capture_output=True,
         text=True,
