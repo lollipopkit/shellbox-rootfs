@@ -22,7 +22,7 @@
     "",
     "Adding a series is deliberate work and never automatic: it means checking",
     "that the app's repositories file is right for it, that its package",
-    "manager works under proot on Android and under the ish engine on iOS, and",
+    "manager works under proot on Android and under fl_userland on iOS, and",
     "that the mirror paths the app builds actually resolve."
   ],
   "distros": {

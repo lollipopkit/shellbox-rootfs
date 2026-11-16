@@ -11,7 +11,7 @@ series and changes nothing.
 A distribution holds several releases and each is one pin, moving on its own.
 Adding one is never this script's doing: a new series needs its repository
 file checked against the app's, and its package manager tried under proot and
-under the ish engine.
+under fl_userland (iOS).
 
     scripts/track.py            # report
     scripts/track.py --write    # update sources.json in place
